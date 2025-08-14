@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Pasangkan Hewan 3x3</title>
+    <!-- Memuat Tailwind CSS untuk styling yang mudah dan responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Gaya kustom untuk memastikan kartu terlihat bagus */
+        .card {
+            width: 80px; /* Lebar kartu default untuk perangkat kecil */
+            height: 80px; /* Tinggi kartu default, memastikan kartu persegi */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #60a5fa; /* Warna biru cerah untuk bagian belakang kartu */
+            border-radius: 12px; /* Sudut membulat */
+            cursor: pointer;
+            font-size: 3rem; /* Ukuran emoji default */
+            transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Bayangan lembut */
+            transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .card.flipped {
+            background-color: #a7f3d0; /* Warna hijau muda saat kartu dibalik */
+            transform: rotateY(180deg);
+        }
+
+        .card-inner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+        }
+
+        .card-front {
+            background-color: #a7f3d0; /* Warna hijau muda untuk bagian depan kartu */
+            transform: rotateY(180deg);
+        }
+
+        .card-back {
+            background-color: #60a5fa; /* Warna biru cerah untuk bagian belakang kartu */
+        }
+
+        .card.matched .card-inner {
+            /* Kartu yang cocok tetap terlihat */
+            transition: transform 0.5s ease-out;
+        }
+        
+        /* Gaya untuk ikon sukses */
+        .success-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3.5rem; /* Ukuran font lebih besar untuk emoji hewan */
+            z-index: 10;
+            animation: popInAbsolute 0.5s ease-out forwards;
+            opacity: 0;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8); /* Efek cahaya di sekitar hewan */
+        }
+        
+        /* Animasi untuk ikon sukses (untuk elemen dengan posisi absolute) */
+        @keyframes popInAbsolute {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5) rotate(-10deg);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.5) rotate(10deg);
+            }
+            75% {
+                transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            }
+        }
+        
+        /* Animasi untuk popup container */
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            70% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* Animasi untuk popup emoji */
+        @keyframes bounceIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+            70% {
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* Animasi untuk fade out */
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+        
+        /* Gaya untuk emoji yang berhasil ditemukan */
+        .emoji-bounce {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        
+        .emoji-bounce:hover {
+            transform: scale(1.2);
+        }
+
+        /* Penyesuaian untuk gameBoard agar lebih rapi dan terpusat */
+        #gameBoard {
+            display: grid;
+            /* Menggunakan 3 kolom tetap untuk konsistensi */
+            grid-template-columns: repeat(3, 1fr); /* 3 kolom */
+            justify-content: center; /* Pusatkan item secara horizontal dalam grid */
+            /* Menghitung max-width berdasarkan 3 kartu, 2 gap (gap-3 = 12px), dan 2 padding (10px) */
+            max-width: calc(3 * 80px + 2 * 12px + 2 * 10px);
+            margin: 0 auto; /* Pusatkan papan game di tengah halaman */
+            gap: 12px; /* Sesuai dengan gap-3 di HTML */
+            padding: 10px; /* Sedikit padding di sekitar papan game */
+        }
+
+        /* Responsif untuk ukuran layar yang berbeda */
+        @media (min-width: 480px) { /* Untuk ponsel yang lebih besar */
+            .card {
+                width: 80px;
+                height: 80px;
+                font-size: 3rem;
+            }
+            #gameBoard {
+                max-width: calc(3 * 80px + 2 * 12px + 2 * 10px);
+            }
+        }
+
+        @media (min-width: 640px) { /* Untuk tablet dan layar yang lebih lebar */
+            .card {
+                width: 90px;
+                height: 90px;
+                font-size: 3.5rem;
+            }
+            #gameBoard {
+                max-width: calc(3 * 90px + 2 * 12px + 2 * 10px);
+            }
+        }
+
+        @media (min-width: 768px) { /* Untuk desktop */
+            .card {
+                width: 100px;
+                height: 100px;
+                font-size: 4rem;
+            }
+            #gameBoard {
+                max-width: calc(3 * 100px + 2 * 12px + 2 * 10px);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-400 via-green-500 to-teal-500 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-white">
+
+    <div class="bg-white bg-opacity-30 p-6 rounded-2xl shadow-xl max-w-4xl w-full text-center">
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-6 text-white drop-shadow-lg">Pasangkan Hewan! 🐾</h1>
+
+        <div class="flex justify-around items-center mb-6 text-xl md:text-2xl font-bold">
+            <p>Langkah: <span id="moves">0</span></p>
+            <button id="restartButton" class="bg-yellow-400 hover:bg-yellow-500 text-blue-800 font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Mulai Ulang
+            </button>
+        </div>
+
+        <!-- Grid game 3x3 -->
+        <div id="gameBoard" class="grid grid-cols-3 gap-3 justify-center max-w-full mx-auto">
+            <!-- Kartu game akan dimasukkan di sini oleh JavaScript -->
+        </div>
+        
+        <!-- Tombol Mulai di tengah bawah -->
+        <div class="flex justify-center mt-6">
+            <button id="startButton" class="bg-green-400 hover:bg-green-500 text-blue-800 font-bold py-3 px-10 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 text-xl">
+                Mulai
+            </button>
+        </div>
+
+        <!-- Kotak pesan untuk notifikasi game -->
+        <div id="messageBox" class="mt-8 p-4 bg-blue-500 bg-opacity-70 rounded-lg text-xl font-semibold hidden">
+            <!-- Pesan game akan ditampilkan di sini -->
+        </div>
+    </div>
+
+    <script>
+        // Mendapatkan elemen-elemen DOM yang diperlukan
+        const gameBoard = document.getElementById('gameBoard');
+        const movesDisplay = document.getElementById('moves');
+        const restartButton = document.getElementById('restartButton');
+        const startButton = document.getElementById('startButton');
+        const messageBox = document.getElementById('messageBox');
+
+        // Daftar emoji hewan yang akan digunakan
+        const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🦁', '🐯', '🐸'];
+        let gameCards = []; // Array untuk menyimpan semua kartu dalam game
+        let flippedCards = []; // Array untuk menyimpan kartu yang sedang dibalik
+        let matchedPairs = 0; // Menghitung pasangan yang sudah cocok
+        let moves = 0; // Menghitung jumlah langkah
+        let matchedCards = []; // Array untuk menyimpan kartu yang sudah cocok
+        let foundEmojis = []; // Array untuk menyimpan jenis emoji yang sudah ditemukan
+
+        // Fungsi untuk mengocok array (algoritma Fisher-Yates)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Tukar elemen
+            }
+            return array;
+        }
+
+        // Fungsi untuk menginisialisasi atau memulai ulang game
+        function initializeGame() {
+            // Sembunyikan pesan dan reset tampilan
+            messageBox.classList.add('hidden');
+            messageBox.textContent = '';
+            
+            // Hapus semua ikon sukses yang mungkin ada dari permainan sebelumnya
+            const successIcons = document.querySelectorAll('.success-icon');
+            successIcons.forEach(icon => icon.remove());
+
+            // Reset tombol Mulai
+            startButton.textContent = 'Mulai';
+            // Hapus semua event listener yang ada dan tambahkan yang baru
+            startButton.replaceWith(startButton.cloneNode(true));
+            // Seleccionar el botón nuevamente después de reemplazarlo
+            const refreshedStartButton = document.getElementById('startButton');
+            refreshedStartButton.addEventListener('click', hideAllCards);
+            refreshedStartButton.classList.remove('hidden');
+            refreshedStartButton.disabled = false;
+            refreshedStartButton.classList.remove('opacity-50');
+
+            // Untuk grid 3x3 kita butuh 9 kartu total dengan hanya 3 jenis hewan
+            // Kocok daftar emoji untuk memilih secara acak
+            let shuffledEmojis = [...emojis];
+            shuffleArray(shuffledEmojis);
+            
+            // Pilih hanya 3 emoji untuk digunakan dalam game
+            const selectedEmojis = shuffledEmojis.slice(0, 3); // 3 jenis hewan saja
+            
+            // Buat 9 kartu dari 3 jenis hewan (masing-masing 3 kartu)
+            gameCards = [...selectedEmojis, ...selectedEmojis, ...selectedEmojis];
+            
+            // Kocok kartu agar posisinya acak
+            shuffleArray(gameCards);
+
+            // Reset status game
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            matchedCards = [];
+            foundEmojis = [];
+            movesDisplay.textContent = moves;
+            gameBoard.innerHTML = ''; // Kosongkan papan game
+
+            // Buat elemen kartu untuk setiap emoji
+            gameCards.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.emoji = emoji; // Simpan emoji di dataset untuk referensi
+                card.dataset.index = index; // Simpan indeks untuk identifikasi
+
+                const cardInner = document.createElement('div');
+                cardInner.classList.add('card-inner');
+
+                const cardFront = document.createElement('div');
+                cardFront.classList.add('card-front');
+                cardFront.textContent = emoji; // Emoji di bagian depan kartu
+
+                const cardBack = document.createElement('div');
+                cardBack.classList.add('card-back');
+                // Bagian belakang kartu bisa kosong atau memiliki ikon
+
+                cardInner.appendChild(cardFront);
+                cardInner.appendChild(cardBack);
+                card.appendChild(cardInner);
+
+                card.addEventListener('click', handleCardClick); // Tambahkan event listener
+                gameBoard.appendChild(card); // Tambahkan kartu ke papan game
+                
+                // Tampilkan semua kartu saat permainan dimulai
+                card.classList.add('flipped');
+            });
+            
+            // Grid 3x3 sudah lengkap dengan 9 kartu (tidak perlu kartu kosong lagi)
+            
+            // Tampilkan pesan instruksi
+            showMessage('Perhatikan posisi semua hewan! Anda harus menemukan 3 gambar yang sama. Klik tombol Mulai untuk memulai permainan.');
+        }
+
+        // Fungsi untuk menangani klik pada kartu
+        function handleCardClick(event) {
+            const clickedCard = event.currentTarget; // Kartu yang diklik
+            
+            // Jika kartu sudah terbuka atau sudah cocok, abaikan klik
+            if (clickedCard.classList.contains('flipped') || clickedCard.classList.contains('matched') || flippedCards.length === 3) {
+                return;
+            }
+            
+            // Putar kartu
+            clickedCard.classList.add('flipped');
+            flippedCards.push(clickedCard); // Tambahkan ke daftar kartu yang dibalik
+            
+            // Jika ada tiga kartu yang dibalik, periksa apakah semuanya sama
+            if (flippedCards.length === 3) {
+                moves++; // Tambah jumlah langkah
+                movesDisplay.textContent = moves; // Perbarui tampilan langkah
+                
+                const [card1, card2, card3] = flippedCards; // Ambil tiga kartu yang dibalik
+                
+                // Periksa apakah semua emoji sama
+                if (card1.dataset.emoji === card2.dataset.emoji && card2.dataset.emoji === card3.dataset.emoji) {
+                    // Jika semua sama, tandai sebagai 'matched' dan kosongkan flippedCards
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    card3.classList.add('matched');
+                    matchedPairs++; // Tambah jumlah pasangan yang cocok
+                    
+                    // Simpan kartu yang cocok untuk ditampilkan nanti
+                    matchedCards.push(card1);
+                    matchedCards.push(card2);
+                    matchedCards.push(card3);
+                    
+                    // Tambahkan emoji ke daftar emoji yang ditemukan jika belum ada
+                    if (!foundEmojis.includes(card1.dataset.emoji)) {
+                        foundEmojis.push(card1.dataset.emoji);
+                    }
+                    
+                    // Tampilkan tanda centang pada kartu yang cocok
+                    setTimeout(() => {
+                        // Tambahkan tanda centang pada ketiga kartu
+                        const checkmark1 = document.createElement('div');
+                        checkmark1.textContent = '✓';
+                        checkmark1.className = 'absolute top-1 left-1 text-green-600 font-bold text-xl';
+                        card1.appendChild(checkmark1);
+                        
+                        const checkmark2 = document.createElement('div');
+                        checkmark2.textContent = '✓';
+                        checkmark2.className = 'absolute top-1 left-1 text-green-600 font-bold text-xl';
+                        card2.appendChild(checkmark2);
+                        
+                        const checkmark3 = document.createElement('div');
+                        checkmark3.textContent = '✓';
+                        checkmark3.className = 'absolute top-1 left-1 text-green-600 font-bold text-xl';
+                        card3.appendChild(checkmark3);
+                        
+                        // Ubah warna background kartu menjadi merah muda seperti pada gambar
+                        card1.querySelector('.card-front').style.backgroundColor = '#ffb6c1';
+                        card2.querySelector('.card-front').style.backgroundColor = '#ffb6c1';
+                        card3.querySelector('.card-front').style.backgroundColor = '#ffb6c1';
+                        
+                        flippedCards = []; // Kosongkan kartu yang dibalik
+                        checkWin(); // Periksa apakah game sudah selesai
+                    }, 600);
+                } else {
+                    // Jika tidak semua sama, balik kembali setelah sedikit penundaan
+                    setTimeout(() => {
+                        card1.classList.remove('flipped');
+                        card2.classList.remove('flipped');
+                        card3.classList.remove('flipped');
+                        flippedCards = []; // Kosongkan kartu yang dibalik
+                    }, 1000); // 1 detik agar pemain bisa melihat perbedaan
+                }
+            }
+        }
+
+        // Fungsi untuk memeriksa apakah game sudah selesai
+        function checkWin() {
+            // Jika semua kelompok telah ditemukan (total 3 kelompok dari 3 jenis hewan)
+            if (matchedPairs === 3) {
+                // Tampilkan pesan kemenangan
+                showMessage(`Selamat! Anda menyelesaikan permainan dalam ${moves} langkah! 🎉`);
+                
+                // Tampilkan semua emoji yang berhasil ditemukan
+                setTimeout(() => {
+                    showSuccessEmojis(foundEmojis);
+                }, 1000);
+                
+                // Tampilkan tombol Mulai kembali dengan teks "Main Lagi"
+                setTimeout(() => {
+                    startButton.textContent = 'Main Lagi';
+                    startButton.classList.remove('hidden');
+                    startButton.disabled = false;
+                    startButton.classList.remove('opacity-50');
+                    startButton.replaceWith(startButton.cloneNode(true));
+                    // Seleccionar el botón nuevamente después de reemplazarlo
+                    const refreshedStartButton = document.getElementById('startButton');
+                    refreshedStartButton.addEventListener('click', initializeGame);
+                }, 1500);
+            }
+        }
+        
+        // Fungsi untuk menampilkan emoji yang berhasil ditemukan
+        function showSuccessEmojis(emojis) {
+            // Buat modal untuk menampilkan emoji
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 flex items-center justify-center z-50';
+            
+            // Buat background semi-transparan
+            const overlay = document.createElement('div');
+            overlay.className = 'absolute inset-0 bg-black opacity-50';
+            modal.appendChild(overlay);
+            
+            // Buat container untuk emoji dengan template literal
+            const modalContent = document.createElement('div');
+            modalContent.className = 'bg-white p-8 rounded-lg shadow-lg z-10 relative';
+            
+            // Buat header
+            const header = document.createElement('h2');
+            header.className = 'text-2xl font-bold mb-4 text-center text-blue-800';
+            header.textContent = 'Hewan yang Berhasil Ditemukan!';
+            modalContent.appendChild(header);
+            
+            // Buat container untuk emoji
+            const emojiContainer = document.createElement('div');
+            emojiContainer.className = 'grid grid-cols-2 gap-4 mb-4';
+            
+            // Tambahkan semua emoji yang ditemukan
+            emojis.forEach((emoji, index) => {
+                const emojiDiv = document.createElement('div');
+                emojiDiv.className = 'text-5xl emoji-bounce';
+                emojiDiv.textContent = emoji;
+                emojiDiv.style.animation = `bounceIn 0.5s ease-out ${index * 0.1}s forwards`;
+                emojiDiv.style.opacity = '0';
+                emojiContainer.appendChild(emojiDiv);
+            });
+            
+            modalContent.appendChild(emojiContainer);
+            
+            // Tambahkan tombol tutup
+            const closeButton = document.createElement('button');
+            closeButton.className = 'mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full';
+            closeButton.textContent = 'Tutup';
+            modalContent.appendChild(closeButton);
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Tambahkan event listener untuk tombol tutup
+            closeButton.addEventListener('click', () => {
+                // Animasi fade out
+                modalContent.classList.add('fadeOut');
+                
+                // Hapus modal setelah animasi selesai
+                setTimeout(() => {
+                    document.body.removeChild(modal);
+                }, 500);
+            });
+        }
+
+        // Fungsi untuk menampilkan pesan kepada pengguna
+        function showMessage(msg) {
+            messageBox.textContent = msg;
+            messageBox.classList.remove('hidden');
+        }
+
+        // Fungsi untuk menutup semua kartu saat tombol Mulai diklik
+        function hideAllCards() {
+            // Nonaktifkan tombol Mulai selama animasi berlangsung
+            startButton.disabled = true;
+            startButton.classList.add('opacity-50');
+            
+            // Tutup semua kartu untuk memulai permainan
+            const allCards = document.querySelectorAll('.card');
+            allCards.forEach(card => {
+                if (!card.classList.contains('matched') && !card.classList.contains('opacity-0')) {
+                    card.classList.remove('flipped');
+                }
+            });
+            
+            // Sembunyikan pesan instruksi
+            messageBox.classList.add('hidden');
+            flippedCards = []; // Reset kartu yang dibalik
+            
+            // Sembunyikan tombol Mulai setelah permainan dimulai
+            startButton.classList.add('hidden');
+            
+            // Tampilkan pesan untuk memulai permainan
+            showMessage('Temukan 3 gambar hewan yang sama!');
+        }
+        
+        // Event listener untuk tombol 'Mulai'
+        startButton.addEventListener('click', hideAllCards);
+        
+        // Event listener untuk tombol 'Mulai Ulang'
+        restartButton.addEventListener('click', initializeGame);
+        
+        // Inisialisasi game saat halaman dimuat
+        window.onload = initializeGame;
+    </script>
+</body>
+</html>
